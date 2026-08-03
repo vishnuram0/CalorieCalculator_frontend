@@ -273,6 +273,7 @@ function SignupForm({ onSuccess, switchToLogin }) {
 }
 
 // ---------------- DASHBOARD ----------------
+// ---------------- DASHBOARD ----------------
 function Dashboard({ token, userEmail, onLogout }) {
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState("");
@@ -284,8 +285,8 @@ function Dashboard({ token, userEmail, onLogout }) {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error("Session expired, please log in again");
-        const text = await res.text();
-        setProfile(text);
+        const data = await res.json();
+        setProfile(data);
       } catch (err) {
         setError(err.message);
       }
@@ -293,13 +294,86 @@ function Dashboard({ token, userEmail, onLogout }) {
     fetchMe();
   }, [token]);
 
+  if (error) {
+    return (
+      <div className="vb-page vb-light">
+        <div className="vb-panel">
+          <Logo />
+          <p className="vb-error">{error}</p>
+          <button className="vb-btn-solid" onClick={onLogout}>LOG OUT</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="vb-page vb-light">
+        <div className="vb-panel">
+          <Logo />
+          <p className="vb-subtitle-light">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ring math: how much of the circle to fill based on target vs a reference max
+  const circumference = 2 * Math.PI * 58; // matches r=58 in svg below
+  const percent = Math.min(profile.targetCalories / 3000, 1); // 3000 as a visual reference ceiling
+  const dashOffset = circumference * (1 - percent);
+
   return (
     <div className="vb-page vb-light">
-      <div className="vb-panel">
-        <Logo />
-        <h1 className="vb-title-light">WELCOME, {userEmail.toUpperCase()}</h1>
-        <p className="vb-subtitle-light">{profile || error || "Loading..."}</p>
-        <button className="vb-btn-solid" onClick={onLogout}>LOG OUT</button>
+      <div className="vb-dash-layout">
+        <div className="vb-panel vb-dash-main">
+          <div className="vb-dash-header">
+            <Logo />
+            <button className="vb-logout-chip" onClick={onLogout}>LOG OUT</button>
+          </div>
+
+          <p className="vb-dash-greeting">Welcome back, {userEmail}</p>
+
+          <div className="vb-dash-ring-wrap">
+            <svg viewBox="0 0 140 140" width="220" height="220">
+              <circle cx="70" cy="70" r="58" fill="none" stroke="#EDEDEA" strokeWidth="12" />
+              <circle
+                cx="70" cy="70" r="58" fill="none" stroke="#4ADE80" strokeWidth="12"
+                strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round"
+                transform="rotate(-90 70 70)"
+                style={{ filter: "drop-shadow(0 0 6px rgba(74,222,128,0.5))" }}
+              />
+            </svg>
+            <div className="vb-dash-ring-text">
+              <span className="vb-dash-ring-num">{profile.targetCalories}</span>
+              <span className="vb-dash-ring-unit">kcal</span>
+              <span className="vb-dash-ring-sub">/ {profile.maintenanceCalories} maintenance</span>
+            </div>
+          </div>
+
+          <div className="vb-dash-stats">
+            <div className="vb-dash-stat">
+              <span className="vb-dash-stat-val">{profile.bmi}</span>
+              <span className="vb-dash-stat-label">BMI &middot; {profile.bmiCategory}</span>
+            </div>
+            <div className="vb-dash-stat">
+              <span className="vb-dash-stat-val">{profile.bmr}</span>
+              <span className="vb-dash-stat-label">BMR (kcal)</span>
+            </div>
+            <div className="vb-dash-stat">
+              <span className="vb-dash-stat-val" style={{ textTransform: "capitalize" }}>{profile.goal}</span>
+              <span className="vb-dash-stat-label">Current goal</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="vb-panel vb-dash-side">
+          <h2 className="vb-dash-side-title">Your profile</h2>
+          <div className="vb-profile-row"><span>Gender</span><b style={{ textTransform: "capitalize" }}>{profile.gender}</b></div>
+          <div className="vb-profile-row"><span>Age</span><b>{profile.age} yrs</b></div>
+          <div className="vb-profile-row"><span>Weight</span><b>{profile.weight} kg</b></div>
+          <div className="vb-profile-row"><span>Height</span><b>{profile.height} cm</b></div>
+          <div className="vb-profile-row"><span>Activity</span><b style={{ textTransform: "capitalize" }}>{profile.activitylevel.replace("_", " ")}</b></div>
+        </div>
       </div>
     </div>
   );

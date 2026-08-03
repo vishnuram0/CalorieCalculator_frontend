@@ -769,3 +769,79 @@ body { font-family: 'Inter', -apple-system, sans-serif; }
 
 .vb-switch-light { text-align: center; font-size: 11.5px; font-weight: 700; color: #8A867C; margin-top: 16px; letter-spacing: 0.03em; }
 .vb-switch-light span { color: #1D9E75; cursor: pointer; }
+.vb-dash-layout {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 20px;
+  max-width: 820px;
+  width: 100%;
+}
+@media (max-width: 760px) {
+  .vb-dash-layout { grid-template-columns: 1fr; }
+}
+
+.vb-dash-main { width: auto; }
+.vb-dash-side { width: auto; }
+
+.vb-dash-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.vb-logout-chip {
+  background: transparent;
+  border: 1.5px solid #E5E3DC;
+  padding: 7px 14px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #8A867C;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+}
+.vb-logout-chip:hover { border-color: #B23A3A; color: #B23A3A; }
+
+.vb-dash-greeting { color: #8A867C; font-size: 14px; margin-bottom: 24px; }
+
+.vb-dash-ring-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 30px;
+}
+.vb-dash-ring-text {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.vb-dash-ring-num { font-size: 34px; font-weight: 800; color: #1A1A18; }
+.vb-dash-ring-unit { font-size: 13px; color: #8A867C; font-weight: 600; margin-top: -4px; }
+.vb-dash-ring-sub { font-size: 11px; color: #B5B1A6; margin-top: 6px; }
+
+.vb-dash-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.vb-dash-stat {
+  background: #F5F4EE;
+  border-radius: 12px;
+  padding: 14px 8px;
+  text-align: center;
+}
+.vb-dash-stat-val { display: block; font-size: 17px; font-weight: 800; color: #1A1A18; }
+.vb-dash-stat-label { display: block; font-size: 10.5px; color: #8A867C; font-weight: 600; margin-top: 3px; }
+
+.vb-dash-side-title { font-size: 15px; font-weight: 700; color: #1A1A18; margin: 0 0 18px; }
+.vb-profile-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #EFEDE6;
+  font-size: 13.5px;
+}
+.vb-profile-row span { color: #8A867C; }
+.vb-profile-row b { color: #1A1A18; font-weight: 700; }

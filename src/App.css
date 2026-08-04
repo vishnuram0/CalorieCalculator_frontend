@@ -845,3 +845,30 @@ body { font-family: 'Inter', -apple-system, sans-serif; }
 }
 .vb-profile-row span { color: #8A867C; }
 .vb-profile-row b { color: #1A1A18; font-weight: 700; }
+.vb-add-food {
+  display: flex;
+  gap: 8px;
+  margin-top: 24px;
+}
+.vb-add-food input {
+  flex: 1;
+  padding: 11px 12px;
+  border: 1px solid #E5E3DC;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-family: inherit;
+}
+.vb-add-food input:focus { outline: none; border-color: #1D9E75; }
+.vb-add-food button {
+  padding: 11px 16px;
+  background: #1A1A18;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.vb-add-food button:hover { background: #333029; }
+.vb-add-food button:disabled { opacity: 0.6; cursor: not-allowed; }

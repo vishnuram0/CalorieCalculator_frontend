@@ -273,26 +273,67 @@ function SignupForm({ onSuccess, switchToLogin }) {
 }
 
 // ---------------- DASHBOARD ----------------
-// ---------------- DASHBOARD ----------------
 function Dashboard({ token, userEmail, onLogout }) {
   const [profile, setProfile] = useState(null);
+  const [today, setToday] = useState(null);
   const [error, setError] = useState("");
+  const [foodName, setFoodName] = useState("");
+  const [calories, setCalories] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  async function fetchProfile() {
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Session expired, please log in again");
+      const data = await res.json();
+      setProfile(data);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function fetchToday() {
+    try {
+      const res = await fetch(`${API_BASE}/api/log/today`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Could not load today's log");
+      const data = await res.json();
+      setToday(data);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
 
   useEffect(() => {
-    async function fetchMe() {
-      try {
-        const res = await fetch(`${API_BASE}/api/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error("Session expired, please log in again");
-        const data = await res.json();
-        setProfile(data);
-      } catch (err) {
-        setError(err.message);
-      }
-    }
-    fetchMe();
+    fetchProfile();
+    fetchToday();
   }, [token]);
+
+  async function handleAddFood() {
+    if (!foodName || !calories || Number(calories)<=0) return;
+    setAdding(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/log/add`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ foodName, calories: Number(calories) }),
+      });
+      if (!res.ok) throw new Error("Could not add entry");
+      setFoodName("");
+      setCalories("");
+      await fetchToday(); // refresh the total after adding
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setAdding(false);
+    }
+  }
 
   if (error) {
     return (
@@ -306,7 +347,7 @@ function Dashboard({ token, userEmail, onLogout }) {
     );
   }
 
-  if (!profile) {
+  if (!profile || !today) {
     return (
       <div className="vb-page vb-light">
         <div className="vb-panel">
@@ -317,10 +358,10 @@ function Dashboard({ token, userEmail, onLogout }) {
     );
   }
 
-  // ring math: how much of the circle to fill based on target vs a reference max
-  const circumference = 2 * Math.PI * 58; // matches r=58 in svg below
-  const percent = Math.min(profile.targetCalories / 3000, 1); // 3000 as a visual reference ceiling
+  const circumference = 2 * Math.PI * 58;
+  const percent = Math.min(today.caloriesEatenToday / today.targetCalories, 1);
   const dashOffset = circumference * (1 - percent);
+  const remaining = Math.max(today.targetCalories - today.caloriesEatenToday, 0);
 
   return (
     <div className="vb-page vb-light">
@@ -344,9 +385,9 @@ function Dashboard({ token, userEmail, onLogout }) {
               />
             </svg>
             <div className="vb-dash-ring-text">
-              <span className="vb-dash-ring-num">{profile.targetCalories}</span>
-              <span className="vb-dash-ring-unit">kcal</span>
-              <span className="vb-dash-ring-sub">/ {profile.maintenanceCalories} maintenance</span>
+              <span className="vb-dash-ring-num">{today.caloriesEatenToday}</span>
+              <span className="vb-dash-ring-unit">kcal eaten</span>
+              <span className="vb-dash-ring-sub">{remaining} left of {today.targetCalories}</span>
             </div>
           </div>
 
@@ -364,6 +405,29 @@ function Dashboard({ token, userEmail, onLogout }) {
               <span className="vb-dash-stat-label">Current goal</span>
             </div>
           </div>
+
+          <div className="vb-add-food">
+            <input
+              placeholder="Food name"
+              value={foodName}
+              onChange={(e) => setFoodName(e.target.value)}
+            />
+            <input
+  placeholder="Calories"
+  type="number"
+  min="0"
+  value={calories}
+  onChange={(e) => {
+    const val = e.target.value;
+    if (val === "" || Number(val) >= 0) {
+      setCalories(val);
+    }
+  }}
+/>
+            <button onClick={handleAddFood} disabled={adding}>
+              {adding ? "Adding..." : "Add"}
+            </button>
+          </div>
         </div>
 
         <div className="vb-panel vb-dash-side">
@@ -378,5 +442,4 @@ function Dashboard({ token, userEmail, onLogout }) {
     </div>
   );
 }
-
 export default App;

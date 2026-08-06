@@ -280,6 +280,7 @@ function Dashboard({ token, userEmail, onLogout }) {
   const [foodName, setFoodName] = useState("");
   const [calories, setCalories] = useState("");
   const [adding, setAdding] = useState(false);
+  const [showLog, setShowLog] = useState(false);
 
   async function fetchProfile() {
     try {
@@ -334,6 +335,18 @@ function Dashboard({ token, userEmail, onLogout }) {
       setAdding(false);
     }
   }
+  async function handleDelete(id) {
+  try {
+    const res = await fetch(`${API_BASE}/api/log/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("Could not delete entry");
+    await fetchToday();
+  } catch (err) {
+    setError(err.message);
+  }
+}
 
   if (error) {
     return (
@@ -427,7 +440,25 @@ function Dashboard({ token, userEmail, onLogout }) {
             <button onClick={handleAddFood} disabled={adding}>
               {adding ? "Adding..." : "Add"}
             </button>
-          </div>
+            </div>
+         <button className="vb-toggle-log" onClick={() => setShowLog(!showLog)}>
+            {showLog ? "Hide today's log ▲" : "Show today's log ▼"}
+          </button>
+
+          {showLog && (
+            <div className="vb-log-list">
+              {today.entries.length === 0 && (
+                <p className="vb-log-empty">No entries logged today yet</p>
+              )}
+              {today.entries.map((entry) => (
+                <div key={entry.id} className="vb-log-row">
+                  <span className="vb-log-name">{entry.foodName}</span>
+                  <span className="vb-log-cal">{entry.calories} kcal</span>
+                  <button className="vb-log-delete" onClick={() => handleDelete(entry.id)}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="vb-panel vb-dash-side">

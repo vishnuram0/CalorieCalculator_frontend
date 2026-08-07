@@ -915,3 +915,54 @@ body { font-family: 'Inter', -apple-system, sans-serif; }
   letter-spacing: 0.03em;
 }
 .vb-toggle-log:hover { color: #1D9E75; }
+.vb-side-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.vb-edit-link {
+  background: transparent;
+  border: none;
+  color: #1D9E75;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.vb-edit-link:hover { text-decoration: underline; }
+
+.vb-edit-form { display: flex; flex-direction: column; gap: 4px; }
+.vb-edit-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8A867C;
+  text-transform: uppercase;
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+.vb-edit-form input, .vb-edit-form select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #E5E3DC;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-family: inherit;
+}
+.vb-edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 18px;
+}
+.vb-edit-actions .vb-btn-solid { flex: 1; margin-top: 0; }
+.vb-btn-cancel {
+  flex: 1;
+  padding: 13px;
+  background: transparent;
+  border: 1.5px solid #E5E3DC;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #8A867C;
+  cursor: pointer;
+}
+.vb-btn-cancel:hover { border-color: #B23A3A; color: #B23A3A; }

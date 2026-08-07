@@ -21,6 +21,7 @@ function App() {
   const [view, setView] = useState("login");
   const [token, setToken] = useState(localStorage.getItem("token") || "");
   const [userEmail, setUserEmail] = useState(localStorage.getItem("userEmail") || "");
+  
 
   useEffect(() => {
     if (token) setView("app");
@@ -281,6 +282,9 @@ function Dashboard({ token, userEmail, onLogout }) {
   const [calories, setCalories] = useState("");
   const [adding, setAdding] = useState(false);
   const [showLog, setShowLog] = useState(false);
+  const [editing, setEditing] = useState(false);
+const [editForm, setEditForm] = useState(null);
+const [savingProfile, setSavingProfile] = useState(false);
 
   async function fetchProfile() {
     try {
@@ -370,6 +374,46 @@ function Dashboard({ token, userEmail, onLogout }) {
       </div>
     );
   }
+  function startEdit() {
+  setEditForm({
+    gender: profile.gender,
+    age: profile.age,
+    weight: profile.weight,
+    height: profile.height,
+    activitylevel: profile.activitylevel,
+    goal: profile.goal,
+  });
+  setEditing(true);
+}
+
+async function handleSaveProfile() {
+  setSavingProfile(true);
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/profile`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        ...editForm,
+        age: Number(editForm.age),
+        weight: Number(editForm.weight),
+        height: Number(editForm.height),
+      }),
+    });
+    if (!res.ok) throw new Error("Could not update profile");
+    const updated = await res.json();
+    setProfile(updated);
+    
+    await fetchToday();
+    setEditing(false);
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setSavingProfile(false);
+  }
+}
 
   const circumference = 2 * Math.PI * 58;
   const percent = Math.min(today.caloriesEatenToday / today.targetCalories, 1);
@@ -462,12 +506,62 @@ function Dashboard({ token, userEmail, onLogout }) {
         </div>
 
         <div className="vb-panel vb-dash-side">
-          <h2 className="vb-dash-side-title">Your profile</h2>
-          <div className="vb-profile-row"><span>Gender</span><b style={{ textTransform: "capitalize" }}>{profile.gender}</b></div>
-          <div className="vb-profile-row"><span>Age</span><b>{profile.age} yrs</b></div>
-          <div className="vb-profile-row"><span>Weight</span><b>{profile.weight} kg</b></div>
-          <div className="vb-profile-row"><span>Height</span><b>{profile.height} cm</b></div>
-          <div className="vb-profile-row"><span>Activity</span><b style={{ textTransform: "capitalize" }}>{profile.activitylevel.replace("_", " ")}</b></div>
+          <div className="vb-side-header">
+            <h2 className="vb-dash-side-title">Your profile</h2>
+            {!editing && (
+              <button className="vb-edit-link" onClick={startEdit}>Edit</button>
+            )}
+          </div>
+
+          {!editing ? (
+            <>
+              <div className="vb-profile-row"><span>Gender</span><b style={{ textTransform: "capitalize" }}>{profile.gender}</b></div>
+              <div className="vb-profile-row"><span>Age</span><b>{profile.age} yrs</b></div>
+              <div className="vb-profile-row"><span>Weight</span><b>{profile.weight} kg</b></div>
+              <div className="vb-profile-row"><span>Height</span><b>{profile.height} cm</b></div>
+              <div className="vb-profile-row"><span>Activity</span><b style={{ textTransform: "capitalize" }}>{profile.activitylevel.replace("_", " ")}</b></div>
+              <div className="vb-profile-row"><span>Goal</span><b style={{ textTransform: "capitalize" }}>{profile.goal}</b></div>
+            </>
+          ) : (
+            <div className="vb-edit-form">
+              <div className="vb-seg-light">
+                <button type="button" className={editForm.gender === "male" ? "active" : ""} onClick={() => setEditForm({ ...editForm, gender: "male" })}>Male</button>
+                <button type="button" className={editForm.gender === "female" ? "active" : ""} onClick={() => setEditForm({ ...editForm, gender: "female" })}>Female</button>
+              </div>
+
+              <label className="vb-edit-label">Age</label>
+              <input type="number" value={editForm.age} onChange={(e) => setEditForm({ ...editForm, age: e.target.value })} />
+
+              <label className="vb-edit-label">Weight (kg)</label>
+              <input type="number" value={editForm.weight} onChange={(e) => setEditForm({ ...editForm, weight: e.target.value })} />
+
+              <label className="vb-edit-label">Height (cm)</label>
+              <input type="number" value={editForm.height} onChange={(e) => setEditForm({ ...editForm, height: e.target.value })} />
+
+              <label className="vb-edit-label">Activity level</label>
+              <select value={editForm.activitylevel} onChange={(e) => setEditForm({ ...editForm, activitylevel: e.target.value })}>
+                <option value="sedentary">Sedentary</option>
+                <option value="light">Light</option>
+                <option value="moderate">Moderate</option>
+                <option value="active">Active</option>
+                <option value="very_active">Very active</option>
+              </select>
+
+              <label className="vb-edit-label">Goal</label>
+              <div className="vb-seg-light vb-seg-three">
+                <button type="button" className={editForm.goal === "lose" ? "active" : ""} onClick={() => setEditForm({ ...editForm, goal: "lose" })}>Lose</button>
+                <button type="button" className={editForm.goal === "maintain" ? "active" : ""} onClick={() => setEditForm({ ...editForm, goal: "maintain" })}>Maintain</button>
+                <button type="button" className={editForm.goal === "gain" ? "active" : ""} onClick={() => setEditForm({ ...editForm, goal: "gain" })}>Gain</button>
+              </div>
+
+              <div className="vb-edit-actions">
+                <button className="vb-btn-solid" onClick={handleSaveProfile} disabled={savingProfile}>
+                  {savingProfile ? "Saving..." : "Save"}
+                </button>
+                <button className="vb-btn-cancel" onClick={() => setEditing(false)}>Cancel</button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

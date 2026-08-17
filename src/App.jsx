@@ -253,11 +253,11 @@ function SignupForm({ onSuccess, switchToLogin }) {
             </div>
             <div className="hb-field">
               <label>Height (cm)</label>
-              <input className="hb-input" type="number" value={height} onChange={(e) => setHeight(e.target.value)} />
+              <input className="hb-input" type="number" min="1" value={height} onChange={(e) => setHeight(e.target.value)} />
             </div>
             <div className="hb-field">
               <label>Weight (kg)</label>
-              <input className="hb-input" type="number" value={weight} onChange={(e) => setWeight(e.target.value)} />
+              <input className="hb-input" type="number" min="1" value={weight} onChange={(e) => setWeight(e.target.value)} />
             </div>
             <div className="hb-field">
               <label>Activity level</label>
@@ -432,7 +432,36 @@ const remaining = Math.round(Math.max(today.targetCalories - today.caloriesEaten
   const circumference = 2 * Math.PI * 70;
   const percent = Math.min(today.caloriesEatenToday / today.targetCalories, 1);
   const dashOffset = circumference * (1 - percent);
-
+const macroRings = [
+  {
+    label: "Protein",
+    consumed: today.proteinToday,
+    target: profile.proteinGrams,
+    color: "#2563EB",
+    message: "Try to take it from whole food",
+  },
+  {
+    label: "Carbs",
+    consumed: today.carbsToday,
+    target: profile.carbsGrams,
+    color: "#F59E0B",
+    message: "Carbs are the fuel for our energy",
+  },
+  {
+    label: "Fat",
+    consumed: today.fatToday,
+    target: profile.fatGrams,
+    color: "#EF4444",
+    message: "Take it from good fat",
+  },
+  {
+    label: "Fiber",
+    consumed: today.fiberToday,
+    target: profile.fiberGrams,
+    color: "#10B981",
+    message: "Fiber keeps digestion steady — add it gradually",
+  },
+];
   return (
     <div>
       <div className="hb-stat-grid">
@@ -457,8 +486,7 @@ const remaining = Math.round(Math.max(today.targetCalories - today.caloriesEaten
           <span className="hb-stat-sub">kcal left</span>
         </div>
       </div>
-
-      <div className="hb-progress-card">
+<div className="hb-progress-card">
         <div className="hb-ring-wrap">
           <svg viewBox="0 0 170 170" width="200" height="200">
             <circle cx="85" cy="85" r="70" fill="none" stroke="#EEF0F6" strokeWidth="14" />
@@ -475,9 +503,39 @@ const remaining = Math.round(Math.max(today.targetCalories - today.caloriesEaten
         </div>
         <p className="hb-progress-caption">You're {Math.round(percent * 100)}% toward today's goal</p>
       </div>
+
+      <div className="hb-macro-ring-grid">
+        {macroRings.map((macro) => {
+          const circumference = 2 * Math.PI * 40;
+          const percent = macro.target > 0 ? Math.min(macro.consumed / macro.target, 1) : 0;
+          const dashOffset = circumference * (1 - percent);
+
+          return (
+           <div key={macro.label} className="hb-macro-ring-card">
+  <div className="hb-macro-ring-wrap">
+    <svg viewBox="0 0 100 100" width="100" height="100">
+      <circle cx="50" cy="50" r="40" fill="none" stroke="#EEF0F6" strokeWidth="8" />
+      <circle
+        cx="50" cy="50" r="40" fill="none" stroke={macro.color} strokeWidth="8"
+        strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round"
+        transform="rotate(-90 50 50)"
+      />
+    </svg>
+    <div className="hb-macro-ring-value-inside">
+      <span>{macro.consumed}g</span>
+      <small>/ {macro.target}g</small>
+    </div>
+  </div>
+  <div className="hb-macro-ring-label">{macro.label}</div>
+  <div className="hb-macro-ring-message">{macro.message}</div>
+</div>
+          );
+        })}
+      </div>
     </div>
   );
 }
+     
 
 // ---------------- TODAY'S FOOD LIST PAGE ----------------
 function FoodListPage({ token, today, refreshToday }) {
@@ -995,6 +1053,7 @@ function ChangePasswordPage({ token }) {
           value={currentPassword}
           onChange={(e) => setCurrentPassword(e.target.value)}
           placeholder="••••••••"
+          autoComplete="current-password"
         />
       </div>
 
@@ -1006,6 +1065,7 @@ function ChangePasswordPage({ token }) {
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
           placeholder="••••••••"
+          autoComplete="new-password"
         />
       </div>
 
@@ -1017,6 +1077,7 @@ function ChangePasswordPage({ token }) {
           value={confirmNewPassword}
           onChange={(e) => setConfirmNewPassword(e.target.value)}
           placeholder="••••••••"
+           autoComplete="new-password"
         />
       </div>
 

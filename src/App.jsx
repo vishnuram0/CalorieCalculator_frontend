@@ -536,7 +536,6 @@ const macroRings = [
   );
 }
      
-
 // ---------------- TODAY'S FOOD LIST PAGE ----------------
 function FoodListPage({ token, today, refreshToday }) {
   const [error, setError] = useState("");
@@ -548,11 +547,16 @@ function FoodListPage({ token, today, refreshToday }) {
   const [selectedFood, setSelectedFood] = useState(null);
   const [grams, setGrams] = useState("");
   const [unit, setUnit] = useState("g");
+const [confirmedDescription, setConfirmedDescription] = useState("");
+  const [mealPreview, setMealPreview] = useState(null);
+  const [parsingMeal, setParsingMeal] = useState(false);
+  const [confirmingMeal, setConfirmingMeal] = useState(false);
 
   async function handleSearch() {
     if (!searchQuery.trim()) return;
     setSearching(true);
     setSelectedFood(null);
+    setMealPreview(null);
     try {
       const res = await fetch(`${API_BASE}/api/food/search-usda?query=${encodeURIComponent(searchQuery)}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -564,6 +568,55 @@ function FoodListPage({ token, today, refreshToday }) {
       setError(err.message);
     } finally {
       setSearching(false);
+    }
+  }
+
+  async function handleParseDescription() {
+    if (!searchQuery.trim()) return;
+    setParsingMeal(true);
+    setMealPreview(null);
+    setSelectedFood(null);
+    setSearchResults([]);
+    setConfirmedDescription(searchQuery);
+    try {
+      const res = await fetch(`${API_BASE}/api/meal/preview`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ description: searchQuery }),
+      });
+      if (!res.ok) throw new Error("Could not parse meal description");
+      const data = await res.json();
+      setMealPreview(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setParsingMeal(false);
+    }
+  }
+
+  async function handleConfirmMeal() {
+    if (!mealPreview) return;
+    setConfirmingMeal(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/meal/confirm`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ description: searchQuery, mealResult: mealPreview }),
+      });
+      if (!res.ok) throw new Error("Could not save meal");
+      setSearchQuery("");
+      setMealPreview(null);
+      await refreshToday();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setConfirmingMeal(false);
     }
   }
 
@@ -611,7 +664,7 @@ function FoodListPage({ token, today, refreshToday }) {
       <div className="hb-add-row">
         <input
           className="hb-input"
-          placeholder="Search a food (e.g. banana, rice)"
+          placeholder="Search a food, or describe a meal (e.g. 2 idli and sambar 1 cup)"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -619,7 +672,59 @@ function FoodListPage({ token, today, refreshToday }) {
         <button className="hb-btn-primary" onClick={handleSearch} disabled={searching}>
           {searching ? "Searching..." : "Search"}
         </button>
+        <button className="hb-btn-primary" style={{ background: "#7C3AED" }} onClick={handleParseDescription} disabled={parsingMeal}>
+          {parsingMeal ? "Analyzing..." : "✨ Analyze"}
+        </button>
       </div>
+
+      {mealPreview && (
+        <div style={{ marginTop: 16, padding: 14, background: "#F5F6FA", borderRadius: 10 }}>
+          {mealPreview.ingredients.map((ing, idx) => (
+            <div
+              key={idx}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                padding: "8px 0",
+                borderBottom: "1px solid #E5E3DC",
+                fontSize: 13,
+              }}
+            >
+              <span>
+                {ing.matched ? ing.matchedFoodName : `${ing.parsedName} (not found)`}
+                <span style={{ color: "#8B8FA3", marginLeft: 6 }}>
+                  {ing.quantity}{ing.unit}
+                </span>
+              </span>
+              <span style={{ color: ing.matched ? "#1A1A2E" : "#B23A3A", fontWeight: 700 }}>
+                {ing.matched ? `${ing.calories} kcal` : "unmatched"}
+              </span>
+            </div>
+          ))}
+
+          {mealPreview.unmatchedCount > 0 && (
+            <p style={{ fontSize: 12, color: "#B23A3A", marginTop: 8 }}>
+              ⚠ {mealPreview.unmatchedCount} ingredient(s) not found — totals may be incomplete
+            </p>
+          )}
+
+          <div style={{ marginTop: 12, fontWeight: 800, fontSize: 15 }}>
+            Total: {mealPreview.totalCalories} kcal
+            <span style={{ fontWeight: 500, fontSize: 12, color: "#8B8FA3", marginLeft: 8 }}>
+              P {mealPreview.totalProtein}g · C {mealPreview.totalCarbs}g · F {mealPreview.totalFat}g · Fiber {mealPreview.totalFiber}g
+            </span>
+          </div>
+
+          <button
+            className="hb-btn-primary"
+            style={{ marginTop: 12 }}
+            onClick={handleConfirmMeal}
+            disabled={confirmingMeal}
+          >
+            {confirmingMeal ? "Saving..." : "✓ Confirm & log this meal"}
+          </button>
+        </div>
+      )}
 
       {searchResults.length > 0 && !selectedFood && (
         <div style={{ marginTop: 14 }}>
@@ -657,14 +762,14 @@ function FoodListPage({ token, today, refreshToday }) {
               onChange={(e) => setGrams(e.target.value)}
             />
             <select
-  className="hb-input"
-  value={unit}
-  onChange={(e) => setUnit(e.target.value)}
-  style={{ flex: "0 0 90px" }}
->
-  <option value="g">grams</option>
-  <option value="ml">ml</option>
-</select>
+              className="hb-input"
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+              style={{ flex: "0 0 90px" }}
+            >
+              <option value="g">grams</option>
+              <option value="ml">ml</option>
+            </select>
             <button className="hb-btn-primary" onClick={handleLogSelectedFood} disabled={adding}>
               {adding ? "Logging..." : "Log this"}
             </button>

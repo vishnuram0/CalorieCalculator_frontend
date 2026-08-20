@@ -547,16 +547,32 @@ function FoodListPage({ token, today, refreshToday }) {
   const [selectedFood, setSelectedFood] = useState(null);
   const [grams, setGrams] = useState("");
   const [unit, setUnit] = useState("g");
-const [confirmedDescription, setConfirmedDescription] = useState("");
+
   const [mealPreview, setMealPreview] = useState(null);
   const [parsingMeal, setParsingMeal] = useState(false);
   const [confirmingMeal, setConfirmingMeal] = useState(false);
+
+  const [overrideCalories, setOverrideCalories] = useState("");
+  const [overrideProtein, setOverrideProtein] = useState("");
+  const [overrideCarbs, setOverrideCarbs] = useState("");
+  const [overrideFat, setOverrideFat] = useState("");
+  const [overrideFiber, setOverrideFiber] = useState("");
+  const [customFoodName, setCustomFoodName] = useState("");
+const [customCalories, setCustomCalories] = useState("");
+const [customProtein, setCustomProtein] = useState("");
+const [customCarbs, setCustomCarbs] = useState("");
+const [customFat, setCustomFat] = useState("");
+const [customFiber, setCustomFiber] = useState("");
+const [customGrams, setCustomGrams] = useState("100");
+const [submittingCustom, setSubmittingCustom] = useState(false);
+const [searchedOnce, setSearchedOnce] = useState(false);
 
   async function handleSearch() {
     if (!searchQuery.trim()) return;
     setSearching(true);
     setSelectedFood(null);
     setMealPreview(null);
+    setSearchedOnce(true);
     try {
       const res = await fetch(`${API_BASE}/api/food/search-usda?query=${encodeURIComponent(searchQuery)}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -570,6 +586,68 @@ const [confirmedDescription, setConfirmedDescription] = useState("");
       setSearching(false);
     }
   }
+  async function handleSubmitCustomFood() {
+  if (!customFoodName || !customCalories || !customGrams) return;
+  setSubmittingCustom(true);
+  try {
+    const res = await fetch(`${API_BASE}/api/food/custom`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        foodName: customFoodName,
+        caloriesPer100g: Number(customCalories),
+        proteinPer100g: Number(customProtein || 0),
+        carbsPer100g: Number(customCarbs || 0),
+        fatPer100g: Number(customFat || 0),
+        fiberPer100g: Number(customFiber || 0),
+        grams: Number(customGrams),
+      }),
+    });
+    if (!res.ok) {
+      const errBody = await res.json();
+      throw new Error(Object.values(errBody).join(", ") || "Could not save custom food");
+    }
+    setCustomFoodName("");
+    setCustomCalories("");
+    setCustomProtein("");
+    setCustomCarbs("");
+    setCustomFat("");
+    setCustomFiber("");
+    setCustomGrams("100");
+    setSearchQuery("");
+    setSearchResults([]);
+    setSearchedOnce(false);
+    await refreshToday();
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setSubmittingCustom(false);
+  }
+}
+
+  function selectFoodAndPrefill(food) {
+    setSelectedFood(food);
+    setGrams("100");
+    fillFromGrams(food, "100");
+  }
+
+  function fillFromGrams(food, gramsValue) {
+    const ratio = Number(gramsValue) / 100;
+    if (!gramsValue || isNaN(ratio)) return;
+    setOverrideCalories((food.caloriesPer100g * ratio).toFixed(1));
+    setOverrideProtein((food.proteinPer100g * ratio).toFixed(1));
+    setOverrideCarbs((food.carbsPer100g * ratio).toFixed(1));
+    setOverrideFat((food.fatPer100g * ratio).toFixed(1));
+    setOverrideFiber((food.fiberPer100g * ratio).toFixed(1));
+  }
+
+  function handleGramsChange(value) {
+    setGrams(value);
+    if (selectedFood) fillFromGrams(selectedFood, value);
+  }
 
   async function handleParseDescription() {
     if (!searchQuery.trim()) return;
@@ -577,7 +655,6 @@ const [confirmedDescription, setConfirmedDescription] = useState("");
     setMealPreview(null);
     setSelectedFood(null);
     setSearchResults([]);
-    setConfirmedDescription(searchQuery);
     try {
       const res = await fetch(`${API_BASE}/api/meal/preview`, {
         method: "POST",
@@ -624,13 +701,22 @@ const [confirmedDescription, setConfirmedDescription] = useState("");
     if (!selectedFood || !grams || Number(grams) <= 0) return;
     setAdding(true);
     try {
+      const payload = {
+        foodItemId: selectedFood.id,
+        grams: Number(grams),
+        overrideCalories: Number(overrideCalories),
+        overrideProtein: Number(overrideProtein),
+        overrideCarbs: Number(overrideCarbs),
+        overrideFat: Number(overrideFat),
+        overrideFiber: Number(overrideFiber),
+      };
       const res = await fetch(`${API_BASE}/api/log/add-from-food`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ foodItemId: selectedFood.id, grams: Number(grams) }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Could not log food");
       setSelectedFood(null);
@@ -638,6 +724,11 @@ const [confirmedDescription, setConfirmedDescription] = useState("");
       setUnit("g");
       setSearchQuery("");
       setSearchResults([]);
+      setOverrideCalories("");
+      setOverrideProtein("");
+      setOverrideCarbs("");
+      setOverrideFat("");
+      setOverrideFiber("");
       await refreshToday();
     } catch (err) {
       setError(err.message);
@@ -708,12 +799,34 @@ const [confirmedDescription, setConfirmedDescription] = useState("");
             </p>
           )}
 
-          <div style={{ marginTop: 12, fontWeight: 800, fontSize: 15 }}>
-            Total: {mealPreview.totalCalories} kcal
-            <span style={{ fontWeight: 500, fontSize: 12, color: "#8B8FA3", marginLeft: 8 }}>
-              P {mealPreview.totalProtein}g · C {mealPreview.totalCarbs}g · F {mealPreview.totalFat}g · Fiber {mealPreview.totalFiber}g
-            </span>
-          </div>
+          <div className="hb-form-grid" style={{ marginTop: 12 }}>
+  <div className="hb-field">
+    <label>Calories</label>
+    <input className="hb-input" type="number" value={mealPreview.totalCalories}
+      onChange={(e) => setMealPreview({ ...mealPreview, totalCalories: Number(e.target.value) })} />
+  </div>
+  <div className="hb-field">
+    <label>Protein (g)</label>
+    <input className="hb-input" type="number" value={mealPreview.totalProtein}
+      onChange={(e) => setMealPreview({ ...mealPreview, totalProtein: Number(e.target.value) })} />
+  </div>
+  <div className="hb-field">
+    <label>Carbs (g)</label>
+    <input className="hb-input" type="number" value={mealPreview.totalCarbs}
+      onChange={(e) => setMealPreview({ ...mealPreview, totalCarbs: Number(e.target.value) })} />
+  </div>
+  <div className="hb-field">
+    <label>Fat (g)</label>
+    <input className="hb-input" type="number" value={mealPreview.totalFat}
+      onChange={(e) => setMealPreview({ ...mealPreview, totalFat: Number(e.target.value) })} />
+  </div>
+  <div className="hb-field">
+    <label>Fiber (g)</label>
+    <input className="hb-input" type="number" value={mealPreview.totalFiber}
+      onChange={(e) => setMealPreview({ ...mealPreview, totalFiber: Number(e.target.value) })} />
+  </div>
+</div>
+
 
           <button
             className="hb-btn-primary"
@@ -731,7 +844,7 @@ const [confirmedDescription, setConfirmedDescription] = useState("");
           {searchResults.map((food) => (
             <div
               key={food.id}
-              onClick={() => setSelectedFood(food)}
+              onClick={() => selectFoodAndPrefill(food)}
               style={{
                 padding: "10px 12px",
                 border: "1px solid #E5E3DC",
@@ -749,17 +862,64 @@ const [confirmedDescription, setConfirmedDescription] = useState("");
           ))}
         </div>
       )}
+      {searchedOnce && searchResults.length === 0 && !selectedFood && !mealPreview && (
+  <div style={{ marginTop: 14, padding: 14, background: "#FFF7ED", borderRadius: 10, border: "1px solid #FDBA74" }}>
+    <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
+      "{searchQuery}" not found in our database — enter nutrition values manually
+    </p>
+
+    <div className="hb-field">
+      <label>Food name</label>
+      <input className="hb-input" value={customFoodName || searchQuery} onChange={(e) => setCustomFoodName(e.target.value)} placeholder="e.g. Oreo Dairy Milk" />
+    </div>
+
+    <div className="hb-form-grid" style={{ marginTop: 10 }}>
+      <div className="hb-field">
+        <label>Calories / 100g</label>
+        <input className="hb-input" type="number" min="0" value={customCalories} onChange={(e) => setCustomCalories(e.target.value)} placeholder="e.g. 245" />
+      </div>
+      <div className="hb-field">
+        <label>Protein / 100g</label>
+        <input className="hb-input" type="number" min="0" value={customProtein} onChange={(e) => setCustomProtein(e.target.value)} placeholder="optional" />
+      </div>
+      <div className="hb-field">
+        <label>Carbs / 100g</label>
+        <input className="hb-input" type="number" min="0" value={customCarbs} onChange={(e) => setCustomCarbs(e.target.value)} placeholder="optional" />
+      </div>
+      <div className="hb-field">
+        <label>Fat / 100g</label>
+        <input className="hb-input" type="number" min="0" value={customFat} onChange={(e) => setCustomFat(e.target.value)} placeholder="optional" />
+      </div>
+      <div className="hb-field">
+        <label>Fiber / 100g</label>
+        <input className="hb-input" type="number" min="0" value={customFiber} onChange={(e) => setCustomFiber(e.target.value)} placeholder="optional" />
+      </div>
+      <div className="hb-field">
+        <label>Grams eaten</label>
+        <input className="hb-input" type="number" min="1" value={customGrams} onChange={(e) => setCustomGrams(e.target.value)} />
+      </div>
+    </div>
+
+    <button className="hb-btn-primary" style={{ marginTop: 12 }} onClick={handleSubmitCustomFood} disabled={submittingCustom}>
+      {submittingCustom ? "Saving..." : "Save & Add to Meal"}
+    </button>
+    <p style={{ fontSize: 11, color: "#8B8FA3", marginTop: 8 }}>
+      This will be logged now and submitted for admin review.
+    </p>
+  </div>
+)}
 
       {selectedFood && (
         <div style={{ marginTop: 14, padding: 14, background: "#F5F6FA", borderRadius: 10 }}>
           <div style={{ fontWeight: 700, marginBottom: 8 }}>{selectedFood.foodName}</div>
+
           <div className="hb-add-row">
             <input
               className="hb-input"
               type="number"
               placeholder="Grams"
               value={grams}
-              onChange={(e) => setGrams(e.target.value)}
+              onChange={(e) => handleGramsChange(e.target.value)}
             />
             <select
               className="hb-input"
@@ -770,6 +930,32 @@ const [confirmedDescription, setConfirmedDescription] = useState("");
               <option value="g">grams</option>
               <option value="ml">ml</option>
             </select>
+          </div>
+
+          <div className="hb-form-grid" style={{ marginTop: 12 }}>
+            <div className="hb-field">
+              <label>Calories</label>
+              <input className="hb-input" type="number" value={overrideCalories} onChange={(e) => setOverrideCalories(e.target.value)} />
+            </div>
+            <div className="hb-field">
+              <label>Protein (g)</label>
+              <input className="hb-input" type="number" value={overrideProtein} onChange={(e) => setOverrideProtein(e.target.value)} />
+            </div>
+            <div className="hb-field">
+              <label>Carbs (g)</label>
+              <input className="hb-input" type="number" value={overrideCarbs} onChange={(e) => setOverrideCarbs(e.target.value)} />
+            </div>
+            <div className="hb-field">
+              <label>Fat (g)</label>
+              <input className="hb-input" type="number" value={overrideFat} onChange={(e) => setOverrideFat(e.target.value)} />
+            </div>
+            <div className="hb-field">
+              <label>Fiber (g)</label>
+              <input className="hb-input" type="number" value={overrideFiber} onChange={(e) => setOverrideFiber(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="hb-add-row" style={{ marginTop: 12 }}>
             <button className="hb-btn-primary" onClick={handleLogSelectedFood} disabled={adding}>
               {adding ? "Logging..." : "Log this"}
             </button>
@@ -802,6 +988,7 @@ const [confirmedDescription, setConfirmedDescription] = useState("");
     </div>
   );
 }
+
 
 // ---------------- PROFILE UPDATE PAGE ----------------
 function ProfilePage({ token, profile, setProfile, refreshToday }) {

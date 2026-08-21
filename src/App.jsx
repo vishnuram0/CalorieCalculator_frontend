@@ -567,6 +567,11 @@ const [customGrams, setCustomGrams] = useState("100");
 const [submittingCustom, setSubmittingCustom] = useState(false);
 const [searchedOnce, setSearchedOnce] = useState(false);
 
+useEffect(() => {
+  if (searchedOnce && searchResults.length === 0 && !selectedFood && !mealPreview) {
+    setCustomFoodName(searchQuery);
+  }
+}, [searchedOnce, searchResults, searchQuery]);
   async function handleSearch() {
     if (!searchQuery.trim()) return;
     setSearching(true);
@@ -587,6 +592,7 @@ const [searchedOnce, setSearchedOnce] = useState(false);
     }
   }
   async function handleSubmitCustomFood() {
+    console.log("handleSubmitCustomFood called", { customFoodName, customCalories, customGrams });
   if (!customFoodName || !customCalories || !customGrams) return;
   setSubmittingCustom(true);
   try {
@@ -870,7 +876,7 @@ const [searchedOnce, setSearchedOnce] = useState(false);
 
     <div className="hb-field">
       <label>Food name</label>
-      <input className="hb-input" value={customFoodName || searchQuery} onChange={(e) => setCustomFoodName(e.target.value)} placeholder="e.g. Oreo Dairy Milk" />
+      <input className="hb-input" value={customFoodName } onChange={(e) => setCustomFoodName(e.target.value)} placeholder="e.g. Oreo Dairy Milk" />
     </div>
 
     <div className="hb-form-grid" style={{ marginTop: 10 }}>
@@ -908,6 +914,7 @@ const [searchedOnce, setSearchedOnce] = useState(false);
     </p>
   </div>
 )}
+
 
       {selectedFood && (
         <div style={{ marginTop: 14, padding: 14, background: "#F5F6FA", borderRadius: 10 }}>

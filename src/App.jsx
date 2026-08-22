@@ -1,7 +1,136 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./App.css";
 
 const API_BASE = "http://localhost:8080";
+
+// ---------------- CONFETTI BURST ----------------
+function ConfettiBurst({ fireKey }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    if (!fireKey) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
+    ctx.scale(dpr, dpr);
+
+    const colors = ["#2563EB", "#10B981", "#F59E0B", "#1A1A2E", "#93C5FD"];
+    const pieces = Array.from({ length: 80 }, () => ({
+      x: w / 2 + (Math.random() - 0.5) * 120,
+      y: h * 0.32,
+      vx: (Math.random() - 0.5) * 9,
+      vy: Math.random() * -9 - 4,
+      size: Math.random() * 6 + 4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rotation: Math.random() * 360,
+      rotSpeed: (Math.random() - 0.5) * 12,
+      gravity: 0.28 + Math.random() * 0.1,
+    }));
+
+    let frame = 0;
+    let animId;
+    function tick() {
+      frame++;
+      ctx.clearRect(0, 0, w, h);
+      let stillAlive = false;
+      pieces.forEach((p) => {
+        p.vy += p.gravity;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rotation += p.rotSpeed;
+        if (p.y < h + 40) stillAlive = true;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, 1 - frame / 90);
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        ctx.restore();
+      });
+      if (stillAlive && frame < 95) {
+        animId = requestAnimationFrame(tick);
+      } else {
+        ctx.clearRect(0, 0, w, h);
+      }
+    }
+    tick();
+    return () => cancelAnimationFrame(animId);
+  }, [fireKey]);
+
+  return <canvas ref={canvasRef} className="hb-confetti-canvas" />;
+}
+
+// ---------------- STREAK CARD ----------------
+function StreakCard({ today }) {
+  if (!today) return null;
+  const current = today.currentStreak || 0;
+  const longest = today.longestStreak || 0;
+  const completed = today.goalCompletedToday;
+  const percent = Math.min(Math.round(today.completionPercent || 0), 999);
+
+  return (
+    <div className={`hb-streak-card ${completed ? "hb-streak-card-active" : ""}`}>
+      <div className="hb-streak-flame">
+        <svg width="30" height="30" viewBox="0 0 24 24">
+          <defs>
+            <linearGradient id="hbFlameGrad" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%" stopColor={completed ? "#EF4444" : "#D1D5DB"} />
+              <stop offset="100%" stopColor={completed ? "#F59E0B" : "#9CA3AF"} />
+            </linearGradient>
+          </defs>
+          <path
+            fill="url(#hbFlameGrad)"
+            d="M12.5 1.2c.6 2.8-.3 4.6-2 6.4-2.3 2.4-3.7 4.6-3.7 7.3 0 3.9 3.2 7.1 7.1 6.9 4.1-.2 6.8-3.4 6.6-7.3-.1-2.6-1.6-4.2-3.2-5.7-.4-.4-.9.1-.7.6.6 1.6.4 3-.7 4-.7.6-1.6-.1-1.4-1 .5-2-.1-4-1.4-5.6-1-1.2-1.1-2.9-.6-5.6.1-.5-.5-.9-1-.4-3 2.7-4.8 5.6-4.8 8.9 0 1.4.4 2.7 1 3.8.3.5-.3 1-.8.7-1.6-1-2.6-2.8-2.6-4.9 0-3.7 2.5-6.9 5.9-8.3.4-.2.9.1.8.5-.2 1-.3 1.9-.1 2.7z"
+          />
+        </svg>
+      </div>
+      <div className="hb-streak-info">
+        <div className="hb-streak-numbers">
+          <span className="hb-streak-current">{current}</span>
+          <span className="hb-streak-unit">day{current === 1 ? "" : "s"} streak</span>
+        </div>
+        <div className="hb-streak-sub">
+          Longest: {longest} day{longest === 1 ? "" : "s"}
+        </div>
+        <div className="hb-streak-progress-track">
+          <div className="hb-streak-progress-fill" style={{ width: `${Math.min(percent, 100)}%` }} />
+        </div>
+        <div className="hb-streak-percent">{percent}% of today's goal</div>
+      </div>
+      {completed && <span className="hb-streak-badge">Complete</span>}
+    </div>
+  );
+}
+
+
+// ---------------- NUTRITION NUDGE ----------------
+function NutritionNudge({ today }) {
+  if (!today) return null;
+  const { proteinLow, fiberLow } = today;
+  if (!proteinLow && !fiberLow) return null;
+
+  let message = "";
+  if (proteinLow && fiberLow) message = "Try to take protein and fibre";
+  else if (proteinLow) message = "Try to take protein";
+  else if (fiberLow) message = "Try to take fibre";
+
+    return (
+    <div className="hb-nudge">
+      <span className="hb-nudge-title">Nutrition tip</span>
+      <div className="hb-nudge-row">
+        <span className="hb-nudge-dot" />
+        {message}
+      </div>
+    </div>
+  );
+}
 
 function Logo({ dark }) {
   return (
@@ -432,6 +561,26 @@ const remaining = Math.round(Math.max(today.targetCalories - today.caloriesEaten
   const circumference = 2 * Math.PI * 70;
   const percent = Math.min(today.caloriesEatenToday / today.targetCalories, 1);
   const dashOffset = circumference * (1 - percent);
+
+  const [celebrateKey, setCelebrateKey] = useState(0);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const prevCompletedRef = useRef(null);
+
+  useEffect(() => {
+    const wasCompleted = prevCompletedRef.current;
+    const isCompleted = today.goalCompletedToday;
+    // only celebrate on the transition into completion during this session,
+    // never on first load (prevents re-firing on every page refresh)
+    if (wasCompleted === false && isCompleted === true) {
+      setCelebrateKey((k) => k + 1);
+      setShowCelebration(true);
+      const timer = setTimeout(() => setShowCelebration(false), 3200);
+      prevCompletedRef.current = isCompleted;
+      return () => clearTimeout(timer);
+    }
+    prevCompletedRef.current = isCompleted;
+  }, [today.goalCompletedToday]);
+
 const macroRings = [
   {
     label: "Protein",
@@ -462,8 +611,10 @@ const macroRings = [
     message: "Fiber keeps digestion steady — add it gradually",
   },
 ];
-  return (
+      return (
     <div>
+      <div className="hb-dashboard-grid">
+      <div className="hb-dashboard-main">
       <div className="hb-stat-grid">
         <div className="hb-stat-card">
           <span className="hb-stat-label">BMI</span>
@@ -486,6 +637,7 @@ const macroRings = [
           <span className="hb-stat-sub">kcal left</span>
         </div>
       </div>
+
 <div className="hb-progress-card">
         <div className="hb-ring-wrap">
           <svg viewBox="0 0 170 170" width="200" height="200">
@@ -501,7 +653,7 @@ const macroRings = [
             <span className="hb-ring-unit">kcal</span>
           </div>
         </div>
-        <p className="hb-progress-caption">You're {Math.round(percent * 100)}% toward today's goal</p>
+                <p className="hb-progress-caption">You're {Math.round(percent * 100)}% toward today's goal</p>
       </div>
 
       <div className="hb-macro-ring-grid">
@@ -532,6 +684,26 @@ const macroRings = [
           );
         })}
       </div>
+      </div>
+
+      <div className="hb-dashboard-side">
+        <StreakCard today={today} />
+      </div>
+      </div>
+
+      {showCelebration && (
+        <>
+          <ConfettiBurst fireKey={celebrateKey} />
+          <div className="hb-celebration-toast">
+            <span className="hb-celebration-title">Goal complete for today 🎉</span>
+            <span className="hb-celebration-sub">
+              Streak {today.currentStreak > 1 ? "extended" : "started"} — {today.currentStreak} day{today.currentStreak === 1 ? "" : "s"} strong.
+            </span>
+          </div>
+        </>
+      )}
+
+      <NutritionNudge today={today} />
     </div>
   );
 }
@@ -695,6 +867,7 @@ useEffect(() => {
       if (!res.ok) throw new Error("Could not save meal");
       setSearchQuery("");
       setMealPreview(null);
+      setSearchedOnce(false);
       await refreshToday();
     } catch (err) {
       setError(err.message);
@@ -730,6 +903,7 @@ useEffect(() => {
       setUnit("g");
       setSearchQuery("");
       setSearchResults([]);
+      setSearchedOnce(false);
       setOverrideCalories("");
       setOverrideProtein("");
       setOverrideCarbs("");

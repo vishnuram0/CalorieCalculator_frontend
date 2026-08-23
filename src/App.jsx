@@ -155,21 +155,55 @@ function App() {
   const [pendingVerifyEmail, setPendingVerifyEmail] = useState("");
   const [pendingVerifyPassword, setPendingVerifyPassword] = useState("");
 
-  useEffect(() => {
-    if (token) setView("app");
-  }, []);
+    useEffect(() => {
+    if (!token) return;
 
-  function handleLoginSuccess(newToken, email) {
+    async function silentRefresh() {
+      const storedRefreshToken = localStorage.getItem("refreshToken");
+      if (!storedRefreshToken) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken: storedRefreshToken }),
+        });
+        if (!res.ok) throw new Error("refresh failed");
+        const data = await res.json();
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("refreshToken", data.refreshToken);
+        setToken(data.token);
+      } catch {
+        // refresh token expired or invalid — force back to login
+        handleLogout();
+      }
+    }
+
+    // access token lasts 15 min — refresh every 10 min so it never actually expires
+    const interval = setInterval(silentRefresh, 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [token]);
+
+  function handleLoginSuccess(newToken, email,refreshToken) {
     localStorage.setItem("token", newToken);
     localStorage.setItem("userEmail", email);
+     if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
     setToken(newToken);
     setUserEmail(email);
     setView("app");
   }
 
-  function handleLogout() {
+    function handleLogout() {
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      fetch(`${API_BASE}/api/auth/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      }).catch(() => {});
+    }
     localStorage.removeItem("token");
     localStorage.removeItem("userEmail");
+    localStorage.removeItem("refreshToken");
     setToken("");
     setUserEmail("");
     setView("login");
@@ -221,6 +255,7 @@ function App() {
    </div>
   );
 }
+//-------autologinform---------------//
 async function autoLoginAfterVerify(email, password, onSuccess, fallbackToLogin) {
   try {
     const res = await fetch(`${API_BASE}/api/auth/login`, {
@@ -230,7 +265,7 @@ async function autoLoginAfterVerify(email, password, onSuccess, fallbackToLogin)
     });
     if (!res.ok) throw new Error("Auto-login failed");
     const data = await res.json();
-    onSuccess(data.token, data.email);
+    onSuccess(data.token, data.email,data.refreshToken);
   } catch {
     fallbackToLogin();
   }
@@ -605,7 +640,7 @@ function LoginForm({ onSuccess, switchToSignup,onNeedsVerification,switchToForgo
         throw new Error(message);
       }
       const data = await res.json();
-      onSuccess(data.token, data.email);
+      onSuccess(data.token, data.email,data.refreshToken);
     } catch (err) {
       setError(err.message);
     } finally {

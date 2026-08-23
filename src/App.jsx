@@ -3,6 +3,8 @@ import "./App.css";
 
 const API_BASE = "http://localhost:8080";
 
+
+
 // ---------------- CONFETTI BURST ----------------
 function ConfettiBurst({ fireKey }) {
   const canvasRef = useRef(null);
@@ -150,6 +152,8 @@ function App() {
   const [view, setView] = useState("login");
   const [token, setToken] = useState(localStorage.getItem("token") || "");
   const [userEmail, setUserEmail] = useState(localStorage.getItem("userEmail") || "");
+  const [pendingVerifyEmail, setPendingVerifyEmail] = useState("");
+  const [pendingVerifyPassword, setPendingVerifyPassword] = useState("");
 
   useEffect(() => {
     if (token) setView("app");
@@ -171,22 +175,411 @@ function App() {
     setView("login");
   }
 
+  function goToVerify(email, password) {
+    setPendingVerifyEmail(email);
+    setPendingVerifyPassword(password || "");
+    setView("verify-otp");
+  }
+
   return (
     <div>
       {view === "login" && (
-        <LoginForm onSuccess={handleLoginSuccess} switchToSignup={() => setView("signup")} />
+        <LoginForm
+          onSuccess={handleLoginSuccess}
+          switchToSignup={() => setView("signup")}
+          onNeedsVerification={(email) => goToVerify(email, "")}
+           switchToForgotPassword={() => setView("forgot-password")}
+        />
       )}
       {view === "signup" && (
-        <SignupForm onSuccess={handleLoginSuccess} switchToLogin={() => setView("login")} />
+        <SignupForm
+          switchToLogin={() => setView("login")}
+          onNeedsVerification={goToVerify}
+        />
+      )}
+      {view === "verify-otp" && (
+        <VerifyOtpForm
+          email={pendingVerifyEmail}
+          password={pendingVerifyPassword}
+          onVerified={(email) => {
+            if (pendingVerifyPassword) {
+              // came from signup with a known password — log straight in
+              autoLoginAfterVerify(email, pendingVerifyPassword, handleLoginSuccess, () => setView("login"));
+            } else {
+              setView("login");
+            }
+          }}
+          switchToLogin={() => setView("login")}
+        />
+      )}
+      {view === "forgot-password" && (
+        <ForgotPasswordForm switchToLogin={() => setView("login")} />
       )}
       {view === "app" && (
         <Dashboard token={token} userEmail={userEmail} onLogout={handleLogout} />
       )}
+   </div>
+  );
+}
+async function autoLoginAfterVerify(email, password, onSuccess, fallbackToLogin) {
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) throw new Error("Auto-login failed");
+    const data = await res.json();
+    onSuccess(data.token, data.email);
+  } catch {
+    fallbackToLogin();
+  }
+}
+// ---------------- OTP VERIFICATION ----------------
+function VerifyOtpForm({ email, password, onVerified, switchToLogin }) {
+  const [otp, setOtp] = useState("");
+  const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => setCooldown((c) => Math.max(c - 1, 0)), 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
+  async function handleVerify() {
+    setError("");
+    setInfo("");
+    if (!otp.trim()) {
+      setError("Enter the 6-digit code from your email");
+      return;
+    }
+    setVerifying(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp: otp.trim() }),
+      });
+      if (!res.ok) {
+        const errBody = await res.json();
+        throw new Error(errBody.error || "Verification failed");
+      }
+      onVerified(email);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setVerifying(false);
+    }
+  }
+
+  async function handleResend() {
+    setError("");
+    setInfo("");
+    setResending(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/resend-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) {
+        const errBody = await res.json();
+        throw new Error(errBody.error || "Could not resend code");
+      }
+      setInfo("A new code has been sent to your email.");
+      setCooldown(60);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setResending(false);
+    }
+  }
+
+  return (
+    <div className="auth-shell">
+      <div className="auth-left">
+        <div className="auth-brand">CALORIE TRACKER <b>PRO</b></div>
+        <p className="auth-tagline">One last step — confirm it's really you.</p>
+        <svg viewBox="0 0 260 220" className="auth-illustration">
+          <circle cx="130" cy="110" r="90" fill="rgba(255,255,255,0.08)" />
+          <circle cx="130" cy="110" r="58" fill="none" stroke="#fff" strokeWidth="4" opacity="0.9" />
+          <path d="M105 110 l18 18 l35 -40" stroke="#fff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          <circle cx="65" cy="55" r="14" fill="#fff" opacity="0.7" />
+          <circle cx="205" cy="60" r="16" fill="#fff" opacity="0.5" />
+          <circle cx="195" cy="175" r="12" fill="#fff" opacity="0.6" />
+        </svg>
+      </div>
+
+      <div className="auth-right">
+        <div className="auth-card">
+          <h1 className="auth-title">Verify your email</h1>
+          <p className="auth-subtitle">We sent a 6-digit code to <b>{email}</b></p>
+
+          <div className="hb-field">
+            <label>Verification code</label>
+            <input
+              className="hb-input"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+              placeholder="123456"
+              maxLength={6}
+              inputMode="numeric"
+              style={{ letterSpacing: "6px", fontSize: "18px", fontWeight: 700, textAlign: "center" }}
+            />
+          </div>
+
+          {error && <p className="vb-error">{error}</p>}
+          {info && <p className="vb-subtitle-light">{info}</p>}
+
+          <button className="hb-btn-primary auth-btn-full" onClick={handleVerify} disabled={verifying}>
+            {verifying ? "Verifying..." : "Verify email"}
+          </button>
+
+          <button
+            type="button"
+            className="auth-link-btn"
+            onClick={handleResend}
+            disabled={resending || cooldown > 0}
+            style={{ marginTop: 12 }}
+          >
+            {cooldown > 0 ? `Resend code in ${cooldown}s` : resending ? "Sending..." : "Resend code"}
+          </button>
+
+          <p className="auth-switch">
+            Wrong email? <span onClick={switchToLogin}>Back to sign in</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+// ---------------- FORGOT PASSWORD ----------------
+function ForgotPasswordForm({ switchToLogin }) {
+  const [step, setStep] = useState("request"); // "request" | "reset"
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => setCooldown((c) => Math.max(c - 1, 0)), 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
+  async function handleRequestCode() {
+    setError("");
+    setInfo("");
+    if (!email.trim()) {
+      setError("Enter your email");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (!res.ok) {
+        let message = "Could not send reset code";
+        try {
+          const errBody = await res.json();
+          message = errBody.error || errBody.message || message;
+        } catch {}
+        throw new Error(message);
+      }
+      setStep("reset");
+      setCooldown(60);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResend() {
+    setError("");
+    setInfo("");
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (!res.ok) {
+        let message = "Could not resend code";
+        try {
+          const errBody = await res.json();
+          message = errBody.error || errBody.message || message;
+        } catch {}
+        throw new Error(message);
+      }
+      setInfo("A new code has been sent to your email.");
+      setCooldown(60);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResetPassword() {
+    setError("");
+    setInfo("");
+    if (!otp.trim()) {
+      setError("Enter the code from your email");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("Passwords don't match");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), otp: otp.trim(), newPassword }),
+      });
+      if (!res.ok) {
+        let message = "Could not reset password";
+        try {
+          const errBody = await res.json();
+          message = errBody.error || errBody.message || message;
+        } catch {}
+        throw new Error(message);
+      }
+      setInfo("Password reset! You can now sign in with your new password.");
+      setTimeout(() => switchToLogin(), 1500);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="auth-shell">
+      <div className="auth-left">
+        <div className="auth-brand">CALORIE TRACKER <b>PRO</b></div>
+        <p className="auth-tagline">Forgot your password? We'll help you back in.</p>
+        <svg viewBox="0 0 260 220" className="auth-illustration">
+          <circle cx="130" cy="110" r="90" fill="rgba(255,255,255,0.08)" />
+          <circle cx="130" cy="110" r="58" fill="none" stroke="#fff" strokeWidth="4" opacity="0.9" />
+          <path d="M110 100 v-15 a20 20 0 0 1 40 0 v15" stroke="#fff" strokeWidth="6" strokeLinecap="round" fill="none" />
+          <rect x="100" y="100" width="60" height="42" rx="8" fill="#fff" opacity="0.9" />
+          <circle cx="65" cy="55" r="14" fill="#fff" opacity="0.7" />
+          <circle cx="205" cy="60" r="16" fill="#fff" opacity="0.5" />
+        </svg>
+      </div>
+
+      <div className="auth-right">
+        <div className="auth-card">
+          {step === "request" ? (
+            <>
+              <h1 className="auth-title">Reset your password</h1>
+              <p className="auth-subtitle">Enter your account email and we'll send you a reset code</p>
+
+              <div className="hb-field">
+                <label>Email</label>
+                <input
+                  className="hb-input"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                />
+              </div>
+
+              {error && <p className="vb-error">{error}</p>}
+
+              <button className="hb-btn-primary auth-btn-full" onClick={handleRequestCode} disabled={loading}>
+                {loading ? "Sending..." : "Send reset code"}
+              </button>
+            </>
+          ) : (
+            <>
+              <h1 className="auth-title">Enter new password</h1>
+              <p className="auth-subtitle">We sent a code to <b>{email}</b></p>
+
+              <div className="hb-field">
+                <label>Reset code</label>
+                <input
+                  className="hb-input"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+                  placeholder="123456"
+                  maxLength={6}
+                  inputMode="numeric"
+                  style={{ letterSpacing: "6px", fontSize: "18px", fontWeight: 700, textAlign: "center" }}
+                />
+              </div>
+
+              <div className="hb-field">
+                <label>New password</label>
+                <input
+                  className="hb-input"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                />
+              </div>
+
+              <div className="hb-field">
+                <label>Confirm new password</label>
+                <input
+                  className="hb-input"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter new password"
+                />
+              </div>
+
+              {error && <p className="vb-error">{error}</p>}
+              {info && <p className="vb-subtitle-light">{info}</p>}
+
+              <button className="hb-btn-primary auth-btn-full" onClick={handleResetPassword} disabled={loading}>
+                {loading ? "Resetting..." : "Reset password"}
+              </button>
+
+              <button
+                type="button"
+                className="auth-link-btn"
+                onClick={handleResend}
+                disabled={loading || cooldown > 0}
+                style={{ marginTop: 12 }}
+              >
+                {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
+              </button>
+            </>
+          )}
+
+          <p className="auth-switch">
+            Remembered it? <span onClick={switchToLogin}>Back to sign in</span>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
 // ---------------- LOGIN ----------------
-function LoginForm({ onSuccess, switchToSignup }) {
+function LoginForm({ onSuccess, switchToSignup,onNeedsVerification,switchToForgotPassword }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -204,7 +597,12 @@ function LoginForm({ onSuccess, switchToSignup }) {
       });
       if (!res.ok) {
         const errBody = await res.json();
-        throw new Error(errBody.error || errBody.message || "Login failed");
+        const message=errBody.error || errBody.message || "Login failed";
+        if (message.toLowerCase().includes("verify")) {
+          onNeedsVerification(email);
+          return;
+        }
+        throw new Error(message);
       }
       const data = await res.json();
       onSuccess(data.token, data.email);
@@ -255,8 +653,8 @@ function LoginForm({ onSuccess, switchToSignup }) {
             </div>
           </div>
 
-          <div className="auth-forgot">
-            <span>Forgot password?</span>
+                    <div className="auth-forgot">
+            <span onClick={switchToForgotPassword}>Forgot password?</span>
           </div>
 
           <button className="hb-btn-primary auth-btn-full" onClick={handleLogin} disabled={loading}>
@@ -274,7 +672,7 @@ function LoginForm({ onSuccess, switchToSignup }) {
   );
 }
 // ---------------- SIGNUP ----------------
-function SignupForm({ onSuccess, switchToLogin }) {
+function SignupForm({ switchToLogin, onNeedsVerification }) {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -312,6 +710,7 @@ function SignupForm({ onSuccess, switchToLogin }) {
         const errBody = await res.json();
         throw new Error(Object.values(errBody).join(", ") || "Signup failed");
       }
+      onNeedsVerification(email,password);
       const loginRes = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

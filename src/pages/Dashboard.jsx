@@ -8,7 +8,7 @@ import { AdminVerifyPage } from "./AdminVerifyPage";
 import { ChangeUsernamePage } from "./ChangeUsernamePage";
 import { ChangePasswordPage } from "./ChangePasswordPage";
 import { ComingSoonPage } from "./ComingSoonPage";
-
+import { WeeklyReportPage } from "./WeeklyReportPage";
 export function Dashboard({ token, userEmail, onLogout }) {
   const [page, setPage] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -94,6 +94,9 @@ export function Dashboard({ token, userEmail, onLogout }) {
           <button className={`hb-nav-item ${page === "profile" ? "active" : ""}`} onClick={() => goTo("profile")}>
             <span>👤</span> Profile update
           </button>
+           <button className={`hb-nav-item ${page === "weekly-report" ? "active" : ""}`} onClick={() => goTo("weekly-report")}>
+            <span>📈</span> Weekly report
+          </button>
 {profile.role === "ADMIN" && (
     <button className={`hb-nav-item ${page === "admin" ? "active" : ""}`} onClick={() => goTo("admin")}>
       <span>🛡️</span> Verify foods
@@ -131,6 +134,7 @@ export function Dashboard({ token, userEmail, onLogout }) {
           {page === "dashboard" && <DashboardHome profile={profile} today={today} />}
           {page === "food" && <FoodListPage token={token} today={today} refreshToday={fetchToday} />}
           {page === "profile" && <ProfilePage token={token} profile={profile} setProfile={setProfile} refreshToday={fetchToday} />}
+            {page === "weekly-report" && <WeeklyReportPage token={token} />}
         {page === "admin" && profile.role === "ADMIN" && <AdminVerifyPage token={token} />}
         {page === "password" && <ChangePasswordPage token={token} />}
 {page === "username" && <ChangeUsernamePage token={token} profile={profile} setProfile={setProfile} />}

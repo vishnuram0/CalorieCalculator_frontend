@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { StreakCard } from "../components/StreakCard";
-import { NutritionNudge } from "../components/NutritionNudge";
+
 import { ConfettiBurst } from "../components/ConfettiBurst";
 
 export function DashboardHome({ profile, today }) {
@@ -150,7 +150,7 @@ const macroRings = [
         </>
       )}
 
-      <NutritionNudge today={today} />
+     
     </div>
   );
 }

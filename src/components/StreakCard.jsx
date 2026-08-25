@@ -1,3 +1,4 @@
+import { NutritionNudge } from "./NutritionNudge";
 export function StreakCard({ today }) {
   if (!today) return null;
   const current = today.currentStreak || 0;
@@ -35,6 +36,7 @@ export function StreakCard({ today }) {
         <div className="hb-streak-percent">{percent}% of today's goal</div>
       </div>
       {completed && <span className="hb-streak-badge">Complete</span>}
+      <NutritionNudge />
     </div>
   );
 }

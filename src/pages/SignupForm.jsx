@@ -40,13 +40,7 @@ export function SignupForm({ switchToLogin, onNeedsVerification }) {
         throw new Error(Object.values(errBody).join(", ") || "Signup failed");
       }
       onNeedsVerification(email,password);
-      const loginRes = await fetch(`${API_BASE}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const loginData = await loginRes.json();
-      onSuccess(loginData.token, loginData.email);
+      
     } catch (err) {
       setError(err.message);
     } finally {

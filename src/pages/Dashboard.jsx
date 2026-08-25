@@ -7,7 +7,7 @@ import { ProfilePage } from "./ProfilePage";
 import { AdminVerifyPage } from "./AdminVerifyPage";
 import { ChangeUsernamePage } from "./ChangeUsernamePage";
 import { ChangePasswordPage } from "./ChangePasswordPage";
-import { ComingSoonPage } from "./ComingSoonPage";
+
 import { WeeklyReportPage } from "./WeeklyReportPage";
 export function Dashboard({ token, userEmail, onLogout }) {
   const [page, setPage] = useState("dashboard");
@@ -110,7 +110,7 @@ export function Dashboard({ token, userEmail, onLogout }) {
             <div className="hb-submenu">
               <button className={`hb-nav-subitem ${page === "password" ? "active" : ""}`} onClick={() => goTo("password")}>Change password</button>
               <button className={`hb-nav-subitem ${page === "username" ? "active" : ""}`} onClick={() => goTo("username")}>Change username</button>
-              <button className={`hb-nav-subitem ${page === "emails" ? "active" : ""}`} onClick={() => goTo("emails")}>Manage email addresses</button>
+             
             </div>
           )}
         </nav>
@@ -138,7 +138,7 @@ export function Dashboard({ token, userEmail, onLogout }) {
         {page === "admin" && profile.role === "ADMIN" && <AdminVerifyPage token={token} />}
         {page === "password" && <ChangePasswordPage token={token} />}
 {page === "username" && <ChangeUsernamePage token={token} profile={profile} setProfile={setProfile} />}
-          {page === "emails" && <ComingSoonPage title="Manage email addresses" />}
+         
         </main>
       </div>
     </div>

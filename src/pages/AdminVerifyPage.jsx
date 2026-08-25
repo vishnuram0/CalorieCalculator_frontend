@@ -55,6 +55,24 @@ export function AdminVerifyPage({ token }) {
       setSaving(false);
     }
   }
+    async function handleDelete(id, foodName) {
+    if (!window.confirm(`Delete "${foodName}"? This can't be undone.`)) return;
+    setError("");
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/foods/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Could not delete food");
+      if (editingId === id) {
+        setEditingId(null);
+        setEditForm(null);
+      }
+      await fetchPending();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
 
   if (loading) return <div className="hb-card"><p>Loading pending foods...</p></div>;
 
@@ -104,11 +122,12 @@ export function AdminVerifyPage({ token }) {
                     onChange={(e) => setEditForm({ ...editForm, fiberPer100g: Number(e.target.value) })} />
                 </div>
               </div>
-              <div className="hb-form-footer">
+                           <div className="hb-form-footer">
                 <button className="hb-btn-primary" onClick={handleVerify} disabled={saving}>
                   {saving ? "Saving..." : "✓ Verify & Save"}
                 </button>
                 <button className="hb-nav-logout" style={{ marginTop: 0 }} onClick={() => setEditingId(null)}>Cancel</button>
+                <button className="hb-nav-logout" style={{ marginTop: 0 }} onClick={() => handleDelete(editingId, editForm.foodName)}>🗑 Remove</button>
               </div>
             </div>
           ) : (
@@ -120,7 +139,10 @@ export function AdminVerifyPage({ token }) {
                   <span style={{ marginLeft: 8, color: "#B5B1A6" }}>({food.source})</span>
                 </div>
               </div>
-              <button className="hb-btn-primary" onClick={() => startEdit(food)}>Review</button>
+                            <div style={{ display: "flex", gap: 8 }}>
+                <button className="hb-btn-primary" onClick={() => startEdit(food)}>Review</button>
+                <button className="hb-nav-logout" style={{ marginTop: 0 }} onClick={() => handleDelete(food.id, food.foodName)}>🗑 Remove</button>
+              </div>
             </div>
           )}
         </div>

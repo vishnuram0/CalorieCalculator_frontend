@@ -1,4 +1,4 @@
-import { useState,useEffect } from "react";
+import { useState,useEffect,useRef } from "react";
 import { API_BASE } from "../api";
 import { Logo } from "../components/Logo";
 import { DashboardHome } from "./DashboardHome";
@@ -7,6 +7,7 @@ import { ProfilePage } from "./ProfilePage";
 import { AdminVerifyPage } from "./AdminVerifyPage";
 import { ChangeUsernamePage } from "./ChangeUsernamePage";
 import { ChangePasswordPage } from "./ChangePasswordPage";
+import { ConfettiBurst } from "../components/ConfettiBurst";
 
 import { WeeklyReportPage } from "./WeeklyReportPage";
 export function Dashboard({ token, userEmail, onLogout }) {
@@ -16,6 +17,9 @@ export function Dashboard({ token, userEmail, onLogout }) {
   const [profile, setProfile] = useState(null);
   const [today, setToday] = useState(null);
   const [error, setError] = useState("");
+  const [celebrateKey, setCelebrateKey] = useState(0);
+    const [showCelebration, setShowCelebration] = useState(false);
+const prevCompletedRef = useRef(null);
 
   async function fetchProfile() {
     try {
@@ -37,6 +41,17 @@ export function Dashboard({ token, userEmail, onLogout }) {
       });
       if (!res.ok) throw new Error("Could not load today's log");
       const data = await res.json();
+      const previous = prevCompletedRef.current;
+    const current = data.goalCompletedToday;
+
+    // Trigger only when goal changes: false → true
+    if (previous === false && current === true) {
+      setCelebrateKey((key) => key + 1);
+       setShowCelebration(true);
+      setTimeout(() => setShowCelebration(false), 3200);
+    }
+
+    prevCompletedRef.current = current;
       setToday(data);
     } catch (err) {
       setError(err.message);
@@ -75,7 +90,18 @@ export function Dashboard({ token, userEmail, onLogout }) {
   }
 
   return (
-    <div className="hb-app">
+     <div className="hb-app">
+      {showCelebration && (
+        <>
+          <ConfettiBurst fireKey={celebrateKey} />
+          <div className="hb-celebration-toast">
+            <span className="hb-celebration-title">Goal complete for today 🎉</span>
+            <span className="hb-celebration-sub">
+              Streak {today.currentStreak > 1 ? "extended" : "started"} — {today.currentStreak} day{today.currentStreak === 1 ? "" : "s"} strong.
+            </span>
+          </div>
+        </>
+      )}
       {sidebarOpen && <div className="hb-overlay" onClick={() => setSidebarOpen(false)} />}
 
       <aside className={`hb-sidebar ${sidebarOpen ? "open" : ""}`}>
@@ -131,7 +157,13 @@ export function Dashboard({ token, userEmail, onLogout }) {
         </header>
 
         <main className="hb-main">
-          {page === "dashboard" && <DashboardHome profile={profile} today={today} />}
+          {page === "dashboard" && (
+  <DashboardHome
+    profile={profile}
+    today={today}
+    
+  />
+)}
           {page === "food" && <FoodListPage token={token} today={today} refreshToday={fetchToday} />}
           {page === "profile" && <ProfilePage token={token} profile={profile} setProfile={setProfile} refreshToday={fetchToday} />}
             {page === "weekly-report" && <WeeklyReportPage token={token} />}

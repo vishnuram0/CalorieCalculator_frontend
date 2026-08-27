@@ -1275,9 +1275,9 @@ body { font-family: 'Inter', -apple-system, sans-serif; }
   display: flex; flex-direction: column; align-items: center; margin-bottom: 20px;
 }
 .hb-ring-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
-.hb-ring-text { position: absolute; display: flex; flex-direction: column; align-items: center; }
-.hb-ring-num { font-size: 20px; font-weight: 800; color: #1A1A2E; }
-.hb-ring-unit { font-size: 12px; color: #8B8FA3; }
+.hb-ring-text { position: absolute; top:50%; left:50% ;transform:translate(-50%,-50%);display: flex; flex-direction: column; align-items: center; text-align:center;width: 130px; }
+.hb-ring-num { font-size: 20px; font-weight: 800; color: #1A1A2E;word-break: break-word; }
+.hb-ring-unit { font-size: 12px; color: #8B8FA3;margin-top: 2px; }
 .hb-progress-caption { font-size: 13px; color: #5B5F73; margin-top: 16px; font-weight: 600; }
 
 .hb-card { background: #fff; border-radius: 18px; padding: 24px; box-shadow: 0 2px 10px rgba(20,20,50,0.05); }
@@ -1591,8 +1591,8 @@ body { font-family: 'Inter', -apple-system, sans-serif; }
   background: #FEF3E0;
   border: 1px solid #FBDCA0;
   border-radius: 18px;
-  padding: 8px 18px;
-  margin-top: 100px;
+  padding: 8px 10px;
+  margin-top: 90px;
 }
 .hb-nudge-row { display: flex; align-items: center; gap: 8px; }
 .hb-nudge-dot {
@@ -1605,10 +1605,11 @@ body { font-family: 'Inter', -apple-system, sans-serif; }
 /* ---------------- CELEBRATION ---------------- */
 .hb-confetti-canvas {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
   pointer-events: none;
-  z-index: 998;
+  z-index: 99999;
 }
 .hb-celebration-toast {
   position: fixed;

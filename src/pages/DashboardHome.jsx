@@ -1,7 +1,4 @@
-import { useState, useEffect, useRef } from "react";
 import { StreakCard } from "../components/StreakCard";
-
-import { ConfettiBurst } from "../components/ConfettiBurst";
 
 export function DashboardHome({ profile, today }) {
 const remaining = Math.round(Math.max(today.targetCalories - today.caloriesEatenToday, 0) * 10) / 10;
@@ -9,24 +6,7 @@ const remaining = Math.round(Math.max(today.targetCalories - today.caloriesEaten
   const percent = Math.min(today.caloriesEatenToday / today.targetCalories, 1);
   const dashOffset = circumference * (1 - percent);
 
-  const [celebrateKey, setCelebrateKey] = useState(0);
-  const [showCelebration, setShowCelebration] = useState(false);
-  const prevCompletedRef = useRef(null);
 
-  useEffect(() => {
-    const wasCompleted = prevCompletedRef.current;
-    const isCompleted = today.goalCompletedToday;
-    // only celebrate on the transition into completion during this session,
-    // never on first load (prevents re-firing on every page refresh)
-    if (wasCompleted === false && isCompleted === true) {
-      setCelebrateKey((k) => k + 1);
-      setShowCelebration(true);
-      const timer = setTimeout(() => setShowCelebration(false), 3200);
-      prevCompletedRef.current = isCompleted;
-      return () => clearTimeout(timer);
-    }
-    prevCompletedRef.current = isCompleted;
-  }, [today.goalCompletedToday]);
 
 const macroRings = [
   {
@@ -137,18 +117,10 @@ const macroRings = [
         <StreakCard today={today} />
       </div>
       </div>
+      
+  
 
-      {showCelebration && (
-        <>
-          <ConfettiBurst fireKey={celebrateKey} />
-          <div className="hb-celebration-toast">
-            <span className="hb-celebration-title">Goal complete for today 🎉</span>
-            <span className="hb-celebration-sub">
-              Streak {today.currentStreak > 1 ? "extended" : "started"} — {today.currentStreak} day{today.currentStreak === 1 ? "" : "s"} strong.
-            </span>
-          </div>
-        </>
-      )}
+      
 
      
     </div>

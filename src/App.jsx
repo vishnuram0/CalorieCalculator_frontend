@@ -8,7 +8,9 @@ import { Dashboard } from "./pages/Dashboard";
 import "./App.css";
 
 function App() {
-  const [view, setView] = useState("login");
+    const [view, setView] = useState(() => 
+    localStorage.getItem("token") ? "app" : "login"
+  );
   const [token, setToken] = useState(localStorage.getItem("token") || "");
   const [userEmail, setUserEmail] = useState(localStorage.getItem("userEmail") || "");
   const [pendingVerifyEmail, setPendingVerifyEmail] = useState("");

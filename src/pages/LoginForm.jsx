@@ -7,6 +7,8 @@ export function LoginForm({ onSuccess, switchToSignup,onNeedsVerification,switch
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [token, setToken] = useState(() => localStorage.getItem("token"));
+const [userEmail, setUserEmail] = useState(() => localStorage.getItem("email"));
 
   async function handleLogin() {
     setError("");

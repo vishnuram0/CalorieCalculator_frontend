@@ -65,6 +65,7 @@ function App() {
     localStorage.removeItem("token");
     localStorage.removeItem("userEmail");
     localStorage.removeItem("refreshToken");
+    localStorage.removeItem("currentPage");
     setToken("");
     setUserEmail("");
     setView("login");

@@ -11,7 +11,7 @@ import { ConfettiBurst } from "../components/ConfettiBurst";
 
 import { WeeklyReportPage } from "./WeeklyReportPage";
 export function Dashboard({ token, userEmail, onLogout }) {
-  const [page, setPage] = useState("dashboard");
+const [page, setPage] = useState(() => localStorage.getItem("currentPage") || "dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [profile, setProfile] = useState(null);
@@ -66,6 +66,7 @@ const prevCompletedRef = useRef(null);
   function goTo(pageId) {
     setPage(pageId);
     setSidebarOpen(false);
+    localStorage.setItem("currentPage",pageId);
   }
 
   if (error) {
